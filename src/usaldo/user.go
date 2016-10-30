@@ -53,3 +53,12 @@ func insertNew(id, nama, ip string) error {
 	err = tx.Commit()
 	return err
 }
+
+func getAllIp() ([]string, error) {
+	ips := make([]string, 0)
+	query := `
+	select ip_domisili
+	from usaldo`
+	err := db_main.Select(&ips, query)
+	return ips, err
+}

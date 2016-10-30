@@ -1,6 +1,12 @@
 package usaldo
 
-import "log"
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+)
 
 // -1 -> user not exist
 func GetSaldo(id string) (int64, error) {
@@ -14,16 +20,41 @@ func GetSaldo(id string) (int64, error) {
 	return u_saldo.getSaldo(id), nil
 }
 
+type Saldo struct {
+	Nilai int64 `json:"nilai_saldo"`
+}
+
 // -1 -> user not exist
 func GetTotalSaldo(id string) (int64, error) {
 	var err error
+	total := int64(0)
+
 	if u_saldo.Id != id {
 		u_saldo, err = getUser(id)
 	}
-	if err != nil {
-		return -1, err
+	if err == nil {
+		// add saldo if user exist
+		total = total + u_saldo.Nilai
 	}
-	return u_saldo.getSaldo(id), nil
+	log.Println("[CHK] Saldo before ip", total)
+
+	// get from all cabang
+	ips, _ := getAllIp()
+	log.Println("[CHK] ips", ips)
+	for _, ip := range ips {
+		// url: ip/ewallet/getSaldo/user_id
+		url := fmt.Sprintf("http://%v:8080/getSaldo/%v", ip, id)
+		resp, _ := http.Get(url)
+		defer resp.Body.Close()
+		body, _ := ioutil.ReadAll(resp.Body)
+		var sld Saldo
+		_ = json.Unmarshal(body, &sld)
+		log.Println("[CHK]", ip, " saldo", sld.Nilai)
+		if sld.Nilai > 0 {
+			total = total + sld.Nilai
+		}
+	}
+	return total, nil
 }
 
 // 0 -> can not transfer
@@ -67,6 +98,25 @@ func RecieveTransfer(id string, val int64) int {
 
 	// sukses transfer
 	return 0
+}
+
+func ReduceSaldo(id string, val int64) int {
+	var err error
+	if u_saldo.Id != id {
+		u_saldo, err = getUser(id)
+	}
+	if err != nil {
+		// user not exist
+		return 0
+	}
+
+	err = u_saldo.subVal(val)
+	if err != nil {
+		// fail to reduce saldo
+		return 0
+	}
+
+	return 1
 }
 
 // 1 -> more / equals val

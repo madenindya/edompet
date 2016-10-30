@@ -1,0 +1,9 @@
+sudo -U postgres createdb ewallet
+psql -U postgres -d ewallet
+
+create table usaldo (
+user_id char(10) primary key,
+nama varchar(50) not null,
+ip_domisili varchar(15) not null,
+nilai_saldo int default 0
+);
