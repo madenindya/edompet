@@ -1,0 +1,70 @@
+<head>
+   <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+   <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.min.css">
+</head>
+
+<body>
+   <div class="container" style="width: 80%; margin-top: 10px;">
+      <ul class="nav nav-tabs">
+        <li role="presentation"><a href="register">Register</a></li>
+        <li role="presentation"><a href="transfer">Transfer</a></li>
+        <li role="presentation"><a href="getSaldo">Cek Saldo</a></li>
+        <li role="presentation"><a href="getTotalSaldo">Cek Total Saldo</a></li>
+      </ul>
+      <form class="form-horizontal" method="post">
+         <fieldset>
+            <!-- Form Name -->
+            <h3>{{.title}}</h3>
+
+            <!-- Select Basic -->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="user_id">User</label>
+               <div class="col-md-4">
+                  <select id="user_id" name="user_id" class="form-control">
+                     <option value="0">Select one</option>
+                     {{ range $u := .users }}
+                        <option value="{{ $u.Id }}">{{ $u.Nama }}</option>
+                     {{ end }}
+                  </select>
+               </div>
+            </div>
+            <!-- Select Basic -->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="selectbasic">Kantor Cabang Tujuan</label>
+               <div class="col-md-4">
+                  <select id="selectbasic" name="selectbasic" class="form-control">
+                     <option value="0">Select one</option>
+                     {{ range $key, $value := .ips }}
+                        <option value="{{ $key }}">{{ $value }}</option>
+                     {{ end }}
+                  </select>
+               </div>
+            </div>
+            <!-- Text input-->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="nilai_saldo">Saldo Ditransfer</label>  
+               <div class="col-md-4">
+                  <input id="nilai_saldo" name="nilai_saldo" type="text" placeholder="50000" class="form-control input-md" required="">
+               </div>
+            </div>
+            <!-- Button -->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="submit"></label>
+               <div class="col-md-4">
+                  <button id="submit" name="submit" class="btn btn-primary">Transfer</button>
+               </div>
+            </div>
+         </fieldset>
+      </form>
+      {{ if .error }}
+         <div class="alert alert-danger">
+           <strong>Danger!</strong> {{ .message }}
+         </div>
+      {{ end }}
+      {{ if .success }}
+         <div class="alert alert-success">
+           <strong>Success!</strong> {{ .message }}
+         </div>
+      {{ end }}
+   </div>
+</body>
