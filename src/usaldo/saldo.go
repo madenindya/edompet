@@ -36,20 +36,19 @@ func GetTotalSaldo(id string) (int64, error) {
 		// add saldo if user exist
 		total = total + u_saldo.Nilai
 	}
-	log.Println("[CHK] Saldo before ip", total)
 
 	// get from all cabang
-	ips, _ := getAllIp()
-	log.Println("[CHK] ips", ips)
+	ips := ns_kelompok
+	log.Println("[CHECK] ns", ips)
 	for _, ip := range ips {
 		// url: ip/ewallet/getSaldo/user_id
-		url := fmt.Sprintf("http://%v:8080/getSaldo/%v", ip, id)
+		url := fmt.Sprintf("http://%v.sisdis.ui.ac.id/ewallet/getSaldo/%v", ip, id)
 		resp, _ := http.Get(url)
 		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)
 		var sld Saldo
 		_ = json.Unmarshal(body, &sld)
-		log.Println("[CHK]", ip, " saldo", sld.Nilai)
+		log.Println("[CHECK]", ip, " saldo", sld.Nilai)
 		if sld.Nilai > 0 {
 			total = total + sld.Nilai
 		}

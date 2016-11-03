@@ -16,27 +16,6 @@ const (
 	DBNAME = "ewallet"
 )
 
-type (
-	RegisterField struct {
-		Id   string `json:"user_id"`
-		Nama string `json:"nama"`
-		Ip   string `json:"ip_domisili"`
-	}
-
-	Saldo struct {
-		Nilai int64 `json:"nilai_saldo"`
-	}
-
-	Response struct {
-		Error   int    `json:"error"`
-		Message string `json:"message"`
-	}
-
-	StatusTransfer struct {
-		Status int `json:"status_transfer"`
-	}
-)
-
 func Init() {
 	// initial database
 	data_src := fmt.Sprintf("user=%v password='%v' dbname=%v sslmode=disable", USER, PASS, DBNAME)

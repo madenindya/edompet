@@ -1,11 +1,15 @@
 package usaldo
 
+import (
+	"errors"
+	"log"
+)
+
 func Register(id, nama, ip string) error {
 	var err error
 	u_saldo, err = getUser(id)
 	if err == nil {
-		// error nil -> user exist (by id)
-		return err
+		return errors.New("User existed")
 	}
 
 	err = insertNew(id, nama, ip)
@@ -31,6 +35,7 @@ func getUser(id string) (Usaldo, error) {
 	row := db_main.QueryRowx(query, id)
 	err := row.StructScan(&usr)
 	if err != nil {
+		log.Println("[ERROR] Usaldo getUser", id, ":", err)
 		return Usaldo{}, err
 	}
 	return usr, nil
@@ -48,6 +53,7 @@ func insertNew(id, nama, ip string) error {
         values ($1, $2, $3, 0)`
 	_, err = tx.Exec(query, id, nama, ip)
 	if err != nil {
+		log.Println("[ERROR] Usaldo insertNew", id, ":", err)
 		return err
 	}
 	err = tx.Commit()
@@ -61,4 +67,25 @@ func getAllIp() ([]string, error) {
 	from usaldo`
 	err := db_main.Select(&ips, query)
 	return ips, err
+}
+
+func GetAllUser() map[string]string {
+	return ns_users
+}
+
+func GetRegisteredUser() []Usaldo {
+	regusers := make([]Usaldo, 0)
+	var tmpusaldo Usaldo
+	query := `
+	select user_id, nama
+	from usaldo`
+	rows, _ := db_main.Queryx(query)
+	for rows.Next() {
+		err := rows.StructScan(&tmpusaldo)
+		if err != nil {
+			log.Println(err)
+		}
+		regusers = append(regusers, tmpusaldo)
+	}
+	return regusers
 }

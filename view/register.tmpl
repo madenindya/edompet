@@ -1,0 +1,58 @@
+<head>
+   <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+   <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.min.css">
+</head>
+<body>
+   <div class="container" style="width: 80%; margin-top: 10px;">
+      <ul class="nav nav-tabs">
+        <li role="presentation"><a href="register">Register</a></li>
+        <li role="presentation"><a href="transfer">Transfer</a></li>
+        <li role="presentation"><a href="getSaldo">Get Saldo</a></li>
+        <li role="presentation"><a href="getTotalSaldo">Get Total Saldo</a></li>
+      </ul>
+      <form class="form-horizontal" method="post">
+         <fieldset>
+            <!-- Form Name -->
+            <h3>{{.title}}</h3>
+            <!-- Text input-->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="user_id">User Id</label>  
+               <div class="col-md-4">
+                  <input id="user_id" name="user_id" type="text" placeholder="1306381622" class="form-control input-md" required="">
+               </div>
+            </div>
+            <!-- Text input-->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="nama">Nama</label>  
+               <div class="col-md-4">
+                  <input id="nama" name="nama" type="text" placeholder="Nindyatama" class="form-control input-md" required="">
+               </div>
+            </div>
+            <!-- Text input-->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="ip_domisili">IP Domisili</label>  
+               <div class="col-md-4">
+                  <input id="ip_domisili" name="ip_domisili" type="text" placeholder="152.118.33.71" class="form-control input-md" required="">
+               </div>
+            </div>
+            <!-- Button -->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="submit"></label>
+               <div class="col-md-4">
+                  <button id="submit" name="submit" class="btn btn-primary">Register</button>
+               </div>
+            </div>
+         </fieldset>
+      </form>
+      {{ if .success }}
+         <div class="alert alert-success">
+           <strong>Success!</strong> {{ .message }}
+         </div>
+      {{ end }}
+      {{ if .error }}
+         <div class="alert alert-danger">
+           <strong>Danger!</strong> {{ .message }}
+         </div>
+      {{end}}
+   </div>
+</body>

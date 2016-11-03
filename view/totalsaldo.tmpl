@@ -1,0 +1,52 @@
+<head>
+   <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+   <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.min.css">
+</head>
+
+<body>
+   <div class="container" style="width: 80%; margin-top: 10px;">
+      <ul class="nav nav-tabs">
+        <li role="presentation"><a href="register">Register</a></li>
+        <li role="presentation"><a href="transfer">Transfer</a></li>
+        <li role="presentation"><a href="getSaldo">Cek Saldo</a></li>
+        <li role="presentation"><a href="getTotalSaldo">Cek Total Saldo</a></li>
+      </ul>
+      <form class="form-horizontal" method="post">
+         <fieldset>
+            <!-- Form Name -->
+            <h3>{{.title}}</h3>
+
+            <!-- Select Basic -->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="user_id">User</label>
+               <div class="col-md-4">
+                  <select id="user_id" name="user_id" class="form-control">
+                     <option value="0">Select one</option>
+                     {{ range $u := .users }}
+                        <option value="{{ $u.Id }}">{{ $u.Nama }}</option>
+                     {{ end }}
+                  </select>
+               </div>
+            </div>
+            <!-- Text input-->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="nilai">Total Saldo</label>  
+               <div class="col-md-4">
+               {{ if .success }}
+                  <input id="nilai" name="nilai" type="text" class="form-control input-md" value="{{ .nilai_saldo }}" readonly="">
+               {{ else }}
+                  <input id="nilai" name="nilai" type="text" class="form-control input-md" readonly="">   
+               {{ end }}
+               </div>
+            </div>
+            <!-- Button -->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="submit"></label>
+               <div class="col-md-4">
+                  <button id="submit" name="submit" class="btn btn-primary">Cek Total</button>
+               </div>
+            </div>
+         </fieldset>
+      </form>
+   </div>
+</body>
