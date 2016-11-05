@@ -1,13 +1,13 @@
 package handler
 
 import (
-	// "bytes"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
+	// "net/url"
 	"strconv"
 
 	"ewallet/src/usaldo"
@@ -27,6 +27,12 @@ type (
 	}
 )
 
+func RenderRegister(c *gin.Context) {
+	c.HTML(http.StatusOK, "register.tmpl", gin.H{
+		"title": "Register",
+	})
+}
+
 func RenderTransfer(c *gin.Context) {
 	// get all user
 	users := usaldo.GetRegisteredUser()
@@ -40,50 +46,81 @@ func RenderTransfer(c *gin.Context) {
 	})
 }
 
+func RenderSaldo(c *gin.Context) {
+	// get all user
+	users := usaldo.GetRegisteredUser()
+	c.HTML(http.StatusOK, "saldo.tmpl", gin.H{
+		"users": users,
+		"title": "Cek Saldo",
+	})
+}
+
+func RenderTotalSaldo(c *gin.Context) {
+	// get all user
+	users := usaldo.GetRegisteredUser()
+	c.HTML(http.StatusOK, "totalsaldo.tmpl", gin.H{
+		"users": users,
+		"title": "Cek Total Saldo",
+	})
+}
+
 func HandleTransfer(c *gin.Context) {
+	// get field from form input
+	var p MyParam
 	id := c.PostForm("user_id")
+	p.Id = id
 	ns := c.PostForm("selectbasic")
 	nilai_str := c.PostForm("nilai_saldo")
 	nilai, err := strconv.ParseInt(nilai_str, 10, 64)
 	if err != nil {
-		log.Println("[ERROR] ParseInt Transfer", err)
+		log.Println("[ERROR] Handler Client HandleTransfer ParseInt nilai", err)
 	}
+	p.Nilai = nilai
 
-	log.Println("[CHECK] id", id, " ns", ns, " nilai", nilai)
-
-	// urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/transfer", ns)
-	urlstr := "http://localhost:8080/transfer"
-
-	// transfer request from client
 	// Check saldo before transfer
 	var resp Response
 	var st StatusTransfer
-
 	can := usaldo.CheckTransfer(id, nilai)
 	if can == 0 {
 		resp.Error = 1
 		resp.Message = "Saldo not enough"
 	} else if can == -1 {
 		resp.Error = 1
-		resp.Message = "User not exist"
+		resp.Message = "User not exist in this Bank"
 	} else {
-		res, err := http.PostForm(urlstr, url.Values{"user_id": {id}, "nilai": {nilai_str}})
-		if err != nil {
-			log.Println("[ERROR] Handler HandleTransfer PostForm", err)
-		}
-		defer res.Body.Close()
-
-		body, _ := ioutil.ReadAll(res.Body)
-		_ = json.Unmarshal(body, &st)
-
-		// reduce saldo if transfer success
+		// Request Transfer
+		st = RequestTranfer(p, ns)
 		if st.Status == 0 {
+			// SUCCESS: reduce saldo if transfer success
 			usaldo.ReduceSaldo(id, nilai)
 			resp.Success = 1
 			resp.Message = "Succcess Transfer"
 		} else {
-			resp.Error = 1
-			resp.Message = "Failed to Transfer"
+			// FAIL: try to register
+			us := usaldo.GetUserSaldo(id)
+			p.Nama = us.Nama
+			p.Ip = us.Ip
+			resp = RequestRegister(p, ns)
+
+			if resp.Success == 1 {
+				// SUCCESS REGISTER: Transfer ulang
+				st = RequestTranfer(p, ns)
+				if st.Status == 0 {
+					// SUCCESS: reduce saldo if transfer success
+					usaldo.ReduceSaldo(id, nilai)
+					resp.Success = 1
+					resp.Message = "Succcess Transfer"
+				} else {
+					// FAIL REGISTER: fail! :(
+					resp.Error = 1
+					resp.Message = "Failed to Transfer"
+				}
+			} else {
+				// FAIL REGISTER: fail! :(
+				resp.Error = 1
+				resp.Message = "Failed to Transfer"
+			}
+
 		}
 	}
 
@@ -109,26 +146,15 @@ func HandleTransfer(c *gin.Context) {
 	}
 }
 
-func RenderRegister(c *gin.Context) {
-	c.HTML(http.StatusOK, "register.tmpl", gin.H{
-		"title": "Register",
-	})
-}
-
 func HandleRegister(c *gin.Context) {
-	id := c.PostForm("user_id")
-	nama := c.PostForm("nama")
-	ip := c.PostForm("ip_domisili")
 
-	// urlstr := "https://nindyatama.sisdis.ui.ac.id/ewallet/register"
-	urlstr := "http://localhost:8080/register"
+	// get field from form input
+	var p MyParam
+	p.Id = c.PostForm("user_id")
+	p.Nama = c.PostForm("nama")
+	p.Ip = c.PostForm("ip_domisili")
 
-	res, _ := http.PostForm(urlstr, url.Values{"user_id": {id}, "nama": {nama}, "ip_domisili": {ip}})
-	defer res.Body.Close()
-
-	body, _ := ioutil.ReadAll(res.Body)
-	var rs Response
-	_ = json.Unmarshal(body, &rs)
+	rs := RequestRegister(p, "nindyatama")
 
 	// BACK TO ORIGINAL PAGE
 	if rs.Success == 1 {
@@ -146,24 +172,12 @@ func HandleRegister(c *gin.Context) {
 	}
 }
 
-func RenderSaldo(c *gin.Context) {
-	// get all user
-	users := usaldo.GetRegisteredUser()
-	c.HTML(http.StatusOK, "saldo.tmpl", gin.H{
-		"users": users,
-		"title": "Cek Saldo",
-	})
-}
-
 func HandleSaldo(c *gin.Context) {
-	id := c.PostForm("user_id")
-	urlstr := fmt.Sprintf("http://localhost:8080/getSaldo/%v", id)
+	// Get param from form
+	var p MyParam
+	p.Id = c.PostForm("user_id")
 
-	resp, _ := http.Get(urlstr)
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	var sld Saldo
-	_ = json.Unmarshal(body, &sld)
+	sld := RequestSaldo(p)
 
 	// get all user
 	users := usaldo.GetRegisteredUser()
@@ -184,18 +198,10 @@ func HandleSaldo(c *gin.Context) {
 	}
 }
 
-func RenderTotalSaldo(c *gin.Context) {
-	// get all user
-	users := usaldo.GetRegisteredUser()
-	c.HTML(http.StatusOK, "totalsaldo.tmpl", gin.H{
-		"users": users,
-		"title": "Cek Total Saldo",
-	})
-}
-
 func HandleTotalSaldo(c *gin.Context) {
 	id := c.PostForm("user_id")
-	urlstr := fmt.Sprintf("http://localhost:8080/getTotalSaldo/%v", id)
+	urlstr := fmt.Sprintf("http://nindyatama.sisdis.ui.ac.id/ewallet/getTotalSaldo/%v", id)
+	// urlstr := fmt.Sprintf("http://localhost:8080/getTotalSaldo/%v", id)
 
 	resp, _ := http.Get(urlstr)
 	defer resp.Body.Close()
@@ -205,7 +211,7 @@ func HandleTotalSaldo(c *gin.Context) {
 
 	// get all user
 	users := usaldo.GetRegisteredUser()
-	c.HTML(http.StatusOK, "saldo.tmpl", gin.H{
+	c.HTML(http.StatusOK, "totalsaldo.tmpl", gin.H{
 		"users":       users,
 		"title":       "Cek Total Saldo",
 		"success":     1,
@@ -213,3 +219,119 @@ func HandleTotalSaldo(c *gin.Context) {
 	})
 
 }
+
+func RequestSaldo(p MyParam) Saldo {
+	// urlstr := fmt.Sprintf("http://nindyatama.sisdis.ui.ac.id/ewallet/getSaldo/%v", id)
+	urlstr := "http://localhost:8080/getSaldo"
+
+	var sld Saldo
+
+	pb, err := json.Marshal(p)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleSaldo json Marshal ->", err)
+	}
+
+	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleSaldo Request ->", err)
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleSaldo Read resp Body ->", err)
+	}
+
+	err = json.Unmarshal(body, &sld)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleSaldo json Unmarshal ->", err)
+	}
+
+	return sld
+}
+
+func RequestRegister(p MyParam, ns string) Response {
+	// urlstr := fmt.Sprintf("http://%v.sisdis.ui.ac.id/ewallet/%v", ns)
+	urlstr := "http://localhost:8080/register"
+
+	var rs Response
+
+	pb, err := json.Marshal(p)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleRegister json Marshal ->", err)
+	}
+
+	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleRegister Request ->", err)
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleRegister Read resp Body ->", err)
+	}
+
+	err = json.Unmarshal(body, &rs)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleRegister json Unmarshal ->", err)
+	}
+
+	return rs
+}
+
+func RequestTranfer(p MyParam, ns string) StatusTransfer {
+	// urlstr := fmt.Sprintf("http://%v.sisdis.ui.ac.id/ewallet/transfer", ns)
+	urlstr := "http://localhost:8080/transfer"
+
+	var st StatusTransfer
+
+	pb, err := json.Marshal(p)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleRegister json Marshal ->", err)
+	}
+
+	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleTransfer Request ->", err)
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleTransfer Read resp Body ->", err)
+	}
+
+	err = json.Unmarshal(body, &st)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleTransfer json Unmarshal ->", err)
+	}
+
+	return st
+}
+
+//
+//
+//
+//
+// OLD
+// Handle Saldo
+// resp, _ := http.Get(urlstr)
+//
+// TRANSFER
+// res, err := http.PostForm(urlstr, url.Values{"user_id": {id}, "nilai": {nilai_str}})
+// 		if err != nil {
+// 			log.Println("[ERROR] Handler HandleTransfer PostForm", err)
+// 		}

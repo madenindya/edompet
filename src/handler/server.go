@@ -3,7 +3,7 @@ package handler
 import (
 	"fmt"
 	"log"
-	"strconv"
+	// "strconv"
 
 	"ewallet/src/usaldo"
 	"github.com/gin-gonic/gin"
@@ -25,8 +25,19 @@ type (
 	}
 )
 
+type MyParam struct {
+	Id    string `json:"user_id"`
+	Nama  string `json:"nama"`
+	Ip    string `json:"ip_domisili"`
+	Nilai int64  `json:"nilai"`
+}
+
 func GetTotalSaldo(c *gin.Context) {
-	id := c.Param("user_id")
+	var p MyParam
+	c.BindJSON(&p)
+	id := p.Id
+
+	ns := usaldo.NsKelompok
 
 	sld, err := usaldo.GetTotalSaldo(id)
 	if err != nil {
@@ -40,7 +51,10 @@ func GetTotalSaldo(c *gin.Context) {
 }
 
 func GetSaldo(c *gin.Context) {
-	id := c.Param("user_id")
+	var p MyParam
+	c.BindJSON(&p)
+	id := p.Id
+	log.Println("[CHECK] Handler Server GetSaldo id ->", id)
 
 	sld, err := usaldo.GetSaldo(id)
 	if err != nil {
@@ -54,13 +68,10 @@ func GetSaldo(c *gin.Context) {
 }
 
 func Transfer(c *gin.Context) {
-	id := c.PostForm("user_id")
-	nilai_str := c.PostForm("nilai")
-	log.Println("[CHECK] user id", id, " nilai", nilai_str)
-	nilai, err := strconv.ParseInt(nilai_str, 10, 64)
-	if err != nil {
-		log.Println("[ERROR] Handler Transfer ParseInt", err)
-	}
+	var p MyParam
+	c.BindJSON(&p)
+	id := p.Id
+	nilai := p.Nilai
 
 	s := usaldo.RecieveTransfer(id, nilai)
 	status := StatusTransfer{
@@ -70,9 +81,11 @@ func Transfer(c *gin.Context) {
 }
 
 func Register(c *gin.Context) {
-	id := c.PostForm("user_id")
-	nama := c.PostForm("nama")
-	ip := c.PostForm("ip_domisili")
+	var p MyParam
+	c.BindJSON(&p)
+	id := p.Id
+	nama := p.Nama
+	ip := p.Ip
 
 	err := usaldo.Register(id, nama, ip)
 	var rs Response
@@ -90,3 +103,22 @@ func Register(c *gin.Context) {
 
 	c.JSON(200, rs)
 }
+
+//
+//
+// OLD
+// GET SALDO
+// id := c.PostForm("user_id")
+// log.Println("[CHECK] user id", id)
+// TRANSFER
+// id := c.PostForm("user_id")
+// nilai_str := c.PostForm("nilai")
+// log.Println("[CHECK] user id", id, " nilai", nilai_str)
+// nilai, err := strconv.ParseInt(nilai_str, 10, 64)
+// if err != nil {
+// 	log.Println("[ERROR] Handler Transfer ParseInt", err)
+// }
+// REGISTER
+// id := c.PostForm("user_id")
+// nama := c.PostForm("nama")
+// ip := c.PostForm("ip_domisili")

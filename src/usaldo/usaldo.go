@@ -20,3 +20,8 @@ var u_saldo Usaldo
 func Init(db *sqlx.DB) {
 	db_main = db
 }
+
+func GetUserSaldo(id string) Usaldo {
+	us, _ := getUser(id)
+	return us
+}

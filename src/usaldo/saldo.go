@@ -32,7 +32,9 @@ func GetTotalSaldo(id string) (int64, error) {
 	if u_saldo.Id != id {
 		u_saldo, err = getUser(id)
 	}
-	if err == nil {
+	if err != nil {
+		// user not exist
+	} else {
 		// add saldo if user exist
 		total = total + u_saldo.Nilai
 	}
@@ -43,6 +45,7 @@ func GetTotalSaldo(id string) (int64, error) {
 	for _, ip := range ips {
 		// url: ip/ewallet/getSaldo/user_id
 		url := fmt.Sprintf("http://%v.sisdis.ui.ac.id/ewallet/getSaldo/%v", ip, id)
+		log.Println(url)
 		resp, _ := http.Get(url)
 		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)

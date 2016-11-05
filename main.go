@@ -10,22 +10,27 @@ func main() {
 
 	hd.Init()
 
-	r.GET("/ping", hd.Ping)
+	// ganti jadi post semua
+	r.POST("/ping", hd.Ping)
 	// Register User
 	r.GET("/client/register", hd.RenderRegister)
 	r.POST("/client/register", hd.HandleRegister)
 	r.POST("/register", hd.Register)
 	// Transfer Saldo
+	// kalo balikin -1
+	// client register
+	// client transfer
 	r.GET("/client/transfer", hd.RenderTransfer)
 	r.POST("/client/transfer", hd.HandleTransfer)
 	r.POST("/transfer", hd.Transfer)
 	// Get Saldo
 	r.GET("/client/getSaldo", hd.RenderSaldo)
 	r.POST("/client/getSaldo", hd.HandleSaldo)
-	r.GET("/getSaldo/:user_id", hd.GetSaldo)
+	r.POST("/getSaldo", hd.GetSaldo)
 	// Get Total Saldo
 	r.GET("/client/getTotalSaldo", hd.RenderTotalSaldo)
-	r.GET("/getTotalSaldo/:user_id", hd.GetTotalSaldo)
+	r.POST("/client/getTotalSaldo", hd.HandleTotalSaldo)
+	r.POST("/getTotalSaldo", hd.GetTotalSaldo)
 	// Render HTML
 	r.LoadHTMLGlob("view/*")
 
