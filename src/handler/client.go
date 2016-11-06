@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	// "net/url"
 	"strconv"
 
 	"ewallet/src/usaldo"
@@ -24,6 +23,10 @@ type (
 		Id   string `json:"user_id"`
 		Nama string `json:"nama"`
 		Ip   string `json:"ip_domisili"`
+	}
+
+	RPong struct {
+		Pong int `json:"pong"`
 	}
 )
 
@@ -65,7 +68,7 @@ func RenderTotalSaldo(c *gin.Context) {
 }
 
 func HandleTransfer(c *gin.Context) {
-	// get field from form input
+	// get param from form input
 	var p MyParam
 	id := c.PostForm("user_id")
 	p.Id = id
@@ -147,12 +150,12 @@ func HandleTransfer(c *gin.Context) {
 }
 
 func HandleRegister(c *gin.Context) {
-
-	// get field from form input
+	// get param from form input
 	var p MyParam
 	p.Id = c.PostForm("user_id")
 	p.Nama = c.PostForm("nama")
 	p.Ip = c.PostForm("ip_domisili")
+	log.Println("[CHECK] Register id:", p.Id, "nama:", p.Nama, "ip:", p.Ip)
 
 	rs := RequestRegister(p, "nindyatama")
 
@@ -173,11 +176,11 @@ func HandleRegister(c *gin.Context) {
 }
 
 func HandleSaldo(c *gin.Context) {
-	// Get param from form
+	// Get param from form input
 	var p MyParam
 	p.Id = c.PostForm("user_id")
 
-	sld := RequestSaldo(p)
+	sld := RequestSaldo(p, "nindyatama")
 
 	// get all user
 	users := usaldo.GetRegisteredUser()
@@ -199,15 +202,11 @@ func HandleSaldo(c *gin.Context) {
 }
 
 func HandleTotalSaldo(c *gin.Context) {
-	id := c.PostForm("user_id")
-	urlstr := fmt.Sprintf("http://nindyatama.sisdis.ui.ac.id/ewallet/getTotalSaldo/%v", id)
-	// urlstr := fmt.Sprintf("http://localhost:8080/getTotalSaldo/%v", id)
+	// Get param from form input
+	var p MyParam
+	p.Id = c.PostForm("user_id")
 
-	resp, _ := http.Get(urlstr)
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	var sld Saldo
-	_ = json.Unmarshal(body, &sld)
+	sld := RequestTotal(p, "nindyatama")
 
 	// get all user
 	users := usaldo.GetRegisteredUser()
@@ -217,12 +216,45 @@ func HandleTotalSaldo(c *gin.Context) {
 		"success":     1,
 		"nilai_saldo": sld.Nilai,
 	})
-
 }
 
-func RequestSaldo(p MyParam) Saldo {
-	// urlstr := fmt.Sprintf("http://nindyatama.sisdis.ui.ac.id/ewallet/getSaldo/%v", id)
-	urlstr := "http://localhost:8080/getSaldo"
+func RequestTotal(p MyParam, ns string) Saldo {
+	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/getTotalSaldo", ns)
+	// urlstr := "http://localhost:8080/getTotalSaldo"
+
+	var sld Saldo
+
+	pb, err := json.Marshal(p)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleTotalSaldo json Marshal ->", err)
+	}
+
+	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleTotalSaldo Request ->", err)
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleTotalSaldo Read resp Body ->", err)
+	}
+
+	err = json.Unmarshal(body, &sld)
+	if err != nil {
+		log.Println("[ERROR] Handler Client HandleTotalSaldo json Unmarshal ->", err)
+	}
+
+	return sld
+}
+
+func RequestSaldo(p MyParam, ns string) Saldo {
+	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/getSaldo", ns)
+	// urlstr := "http://localhost:8080/getSaldo"
 
 	var sld Saldo
 
@@ -246,6 +278,7 @@ func RequestSaldo(p MyParam) Saldo {
 		log.Println("[ERROR] Handler Client HandleSaldo Read resp Body ->", err)
 	}
 
+	log.Println("[CHECK] RequestSaldo body ->", string(body))
 	err = json.Unmarshal(body, &sld)
 	if err != nil {
 		log.Println("[ERROR] Handler Client HandleSaldo json Unmarshal ->", err)
@@ -255,8 +288,8 @@ func RequestSaldo(p MyParam) Saldo {
 }
 
 func RequestRegister(p MyParam, ns string) Response {
-	// urlstr := fmt.Sprintf("http://%v.sisdis.ui.ac.id/ewallet/%v", ns)
-	urlstr := "http://localhost:8080/register"
+	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/register", ns)
+	// urlstr := "http://localhost:8080/register"
 
 	var rs Response
 
@@ -289,8 +322,8 @@ func RequestRegister(p MyParam, ns string) Response {
 }
 
 func RequestTranfer(p MyParam, ns string) StatusTransfer {
-	// urlstr := fmt.Sprintf("http://%v.sisdis.ui.ac.id/ewallet/transfer", ns)
-	urlstr := "http://localhost:8080/transfer"
+	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/transfer", ns)
+	// urlstr := "http://localhost:8080/transfer"
 
 	var st StatusTransfer
 
@@ -320,6 +353,80 @@ func RequestTranfer(p MyParam, ns string) StatusTransfer {
 	}
 
 	return st
+}
+
+func QuorumCheck(c *gin.Context) {
+	ips := [8]string{"71", "76", "85", "95", "96", "97", "99", "104"}
+	tpong := int(0)
+	for _, ip := range ips {
+		var pong RPong
+		urlstr := fmt.Sprintf("http://192.168.75.%v/ewallet/ping", ip)
+
+		req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer([]byte("")))
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Println("[ERROR] Handler Client HandleTotalSaldo Request ->", err)
+		}
+
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Println("[ERROR] Handler Client HandleTotalSaldo Read resp Body ->", err)
+		}
+
+		err = json.Unmarshal(body, &pong)
+		if err != nil {
+			log.Println("[ERROR] Handler Client HandleSaldo json Unmarshal ->", err)
+		}
+
+		if pong.Pong == 1 {
+			tpong = tpong + 1
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"pong": tpong,
+	})
+}
+
+func QuorumCheckFront(c *gin.Context) {
+	nss := usaldo.NsKelompok
+	tpong := int(0)
+	for _, ns := range nss {
+		var pong RPong
+		urlstr := fmt.Sprintf("http://%v.sisdis.ui.ac.id/ewallet/ping", ns)
+
+		req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer([]byte("")))
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Println("[ERROR] Handler Client HandleTotalSaldo Request ->", err)
+		}
+
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Println("[ERROR] Handler Client HandleTotalSaldo Read resp Body ->", err)
+		}
+
+		err = json.Unmarshal(body, &pong)
+		if err != nil {
+			log.Println("[ERROR] Handler Client HandleSaldo json Unmarshal ->", err)
+		}
+
+		if pong.Pong == 1 {
+			tpong = tpong + 1
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"pong": tpong,
+	})
 }
 
 //

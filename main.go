@@ -12,14 +12,12 @@ func main() {
 
 	// ganti jadi post semua
 	r.POST("/ping", hd.Ping)
+	r.GET("/pingall", hd.QuorumCheck)
 	// Register User
 	r.GET("/client/register", hd.RenderRegister)
 	r.POST("/client/register", hd.HandleRegister)
 	r.POST("/register", hd.Register)
 	// Transfer Saldo
-	// kalo balikin -1
-	// client register
-	// client transfer
 	r.GET("/client/transfer", hd.RenderTransfer)
 	r.POST("/client/transfer", hd.HandleTransfer)
 	r.POST("/transfer", hd.Transfer)

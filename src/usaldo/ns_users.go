@@ -43,4 +43,4 @@ var ns_users = map[string]string{
 	// "juan":       "Yeremia Juan Xian Tambunan",
 }
 
-var NsKelompok = [7]string{"nindyatama", "raditya", "wicaksono", "joseph", "saga", "halim", "wijaya", "gylberth"}
+var NsKelompok = [8]string{"nindyatama", "raditya", "wicaksono", "joseph", "saga", "halim", "wijaya", "gylberth"}

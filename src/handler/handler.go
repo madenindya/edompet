@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"ewallet/src/usaldo"
-	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -25,10 +24,4 @@ func Init() {
 	}
 
 	usaldo.Init(db)
-}
-
-func Ping(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"pong": 1,
-	})
 }

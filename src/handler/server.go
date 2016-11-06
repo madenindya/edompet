@@ -3,7 +3,6 @@ package handler
 import (
 	"fmt"
 	"log"
-	// "strconv"
 
 	"ewallet/src/usaldo"
 	"github.com/gin-gonic/gin"
@@ -32,16 +31,26 @@ type MyParam struct {
 	Nilai int64  `json:"nilai"`
 }
 
+func Ping(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"pong": 1,
+	})
+}
+
 func GetTotalSaldo(c *gin.Context) {
 	var p MyParam
 	c.BindJSON(&p)
-	id := p.Id
 
+	sld := int64(0)
+
+	// request to all
 	ns := usaldo.NsKelompok
-
-	sld, err := usaldo.GetTotalSaldo(id)
-	if err != nil {
-		log.Println("[ERROR] GetTotalSaldo", id, ":", err)
+	for _, n := range ns {
+		log.Println("[CHECK] Request GetSaldo to", n)
+		tmp := RequestSaldo(p, n)
+		if tmp.Nilai != -1 {
+			sld = sld + tmp.Nilai
+		}
 	}
 
 	return_saldo := Saldo{
