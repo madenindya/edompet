@@ -10,9 +10,10 @@ func main() {
 
 	hd.Init()
 
-	// ganti jadi post semua
+	// ping
+	r.GET("/client/ping", hd.RenderPing)
+	r.POST("/client/ping", hd.HandlePing)
 	r.POST("/ping", hd.Ping)
-	r.GET("/pingall", hd.QuorumCheck)
 	// Register User
 	r.GET("/client/register", hd.RenderRegister)
 	r.POST("/client/register", hd.HandleRegister)
@@ -29,6 +30,11 @@ func main() {
 	r.GET("/client/getTotalSaldo", hd.RenderTotalSaldo)
 	r.POST("/client/getTotalSaldo", hd.HandleTotalSaldo)
 	r.POST("/getTotalSaldo", hd.GetTotalSaldo)
+
+	// Quorum
+	r.GET("/client", hd.RenderQuorum)
+	r.POST("/client", hd.QuorumCheck)
+
 	// Render HTML
 	r.LoadHTMLGlob("view/*")
 

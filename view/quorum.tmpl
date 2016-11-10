@@ -1,0 +1,38 @@
+<head>
+   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+
+<body>
+   <div class="container" style="width: 80%; margin-top: 10px;">
+      <ul class="nav nav-tabs">
+        <li role="presentation"><a href="client/ping">Ping</a></li>
+        <li role="presentation"><a href="client/register">Register</a></li>
+        <li role="presentation"><a href="client/transfer">Transfer</a></li>
+        <li role="presentation"><a href="client/getSaldo">Cek Saldo</a></li>
+        <li role="presentation"><a href="client/getTotalSaldo">Cek Total Saldo</a></li>
+        <li role="presentation"><a href="">Cek Quorum</a></li>
+      </ul>
+      <form class="form-horizontal" method="post">
+         <fieldset>
+            <!-- Form Name -->
+            <h3>{{.title}}</h3>
+            <!-- Button -->
+            <div class="form-group">
+               <label class="col-md-4 control-label" for="submit"></label>
+               <div class="col-md-4">
+                  <button id="submit" name="submit" class="btn btn-primary">Cek Quorum</button>
+               </div>
+            </div>
+         </fieldset>
+      </form>
+      
+      {{ if .pong }}
+         <div class="alert alert-success">
+            Success ping to: {{ .pong }} nodes
+         </div>
+         <div>
+          {{.sukses}}
+         </div>
+      {{ end }}
+   </div>
+</body>

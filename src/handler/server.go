@@ -38,96 +38,99 @@ func Ping(c *gin.Context) {
 }
 
 func GetTotalSaldo(c *gin.Context) {
-	var p MyParam
-	c.BindJSON(&p)
+	tpong, _ := cekQuorum()
+	var return_saldo Saldo
 
-	sld := int64(0)
+	if tpong == 8 {
+		var p MyParam
+		c.BindJSON(&p)
 
-	// request to all
-	ns := usaldo.NsKelompok
-	for _, n := range ns {
-		log.Println("[CHECK] Request GetSaldo to", n)
-		tmp := RequestSaldo(p, n)
-		if tmp.Nilai != -1 {
-			sld = sld + tmp.Nilai
+		sld := int64(0)
+
+		// request to all
+		ns := usaldo.NsKelompok
+		for _, n := range ns {
+			tmp := RequestSaldo(p, n)
+			if tmp.Nilai != -1 {
+				sld = sld + tmp.Nilai
+			}
 		}
+
+		return_saldo.Nilai = sld
+	} else {
+		return_saldo.Nilai = -1
 	}
 
-	return_saldo := Saldo{
-		Nilai: sld,
-	}
 	c.JSON(200, return_saldo)
 }
 
 func GetSaldo(c *gin.Context) {
-	var p MyParam
-	c.BindJSON(&p)
-	id := p.Id
-	log.Println("[CHECK] Handler Server GetSaldo id ->", id)
+	tpong, _ := cekQuorum()
+	var return_saldo Saldo
 
-	sld, err := usaldo.GetSaldo(id)
-	if err != nil {
-		log.Println("[ERROR] GetSaldo", id, ":", err)
+	if tpong >= 5 {
+
+		var p MyParam
+		c.BindJSON(&p)
+		id := p.Id
+		log.Println("[CHECK] Handler Server GetSaldo id ->", id)
+
+		sld, _ := usaldo.GetSaldo(id)
+
+		return_saldo.Nilai = sld
+	} else {
+		return_saldo.Nilai = -1
 	}
 
-	return_saldo := Saldo{
-		Nilai: sld,
-	}
 	c.JSON(200, return_saldo)
 }
 
 func Transfer(c *gin.Context) {
-	var p MyParam
-	c.BindJSON(&p)
-	id := p.Id
-	nilai := p.Nilai
+	tpong, _ := cekQuorum()
+	var status StatusTransfer
 
-	s := usaldo.RecieveTransfer(id, nilai)
-	status := StatusTransfer{
-		Status: s,
+	if tpong >= 5 {
+		var p MyParam
+		c.BindJSON(&p)
+		id := p.Id
+		nilai := p.Nilai
+
+		s := usaldo.RecieveTransfer(id, nilai)
+		status.Status = s
+	} else {
+		status.Status = -1
 	}
 	c.JSON(200, status)
 }
 
 func Register(c *gin.Context) {
-	var p MyParam
-	c.BindJSON(&p)
-	id := p.Id
-	nama := p.Nama
-	ip := p.Ip
-
-	err := usaldo.Register(id, nama, ip)
+	tpong, _ := cekQuorum()
 	var rs Response
-	if err != nil {
-		m := fmt.Sprintf("Failed to Register User %s", id)
+
+	if tpong >= 5 {
+		var p MyParam
+		c.BindJSON(&p)
+		id := p.Id
+		nama := p.Nama
+		ip := p.Ip
+
+		err := usaldo.Register(id, nama, ip)
+		if err != nil {
+			m := fmt.Sprintf("Failed to Register User %s", id)
+			rs.Success = 0
+			rs.Error = 1
+			rs.Message = m
+		} else {
+			m := fmt.Sprintf("Success Register User %s", id)
+			rs.Success = 1
+			rs.Error = 0
+			rs.Message = m
+		}
+	} else {
 		rs.Success = 0
 		rs.Error = 1
-		rs.Message = m
-	} else {
-		m := fmt.Sprintf("Success Register User %s", id)
-		rs.Success = 1
-		rs.Error = 0
-		rs.Message = m
+		rs.Message = "Failed Check Quorum"
 	}
 
 	c.JSON(200, rs)
 }
-
-//
-//
-// OLD
-// GET SALDO
-// id := c.PostForm("user_id")
-// log.Println("[CHECK] user id", id)
-// TRANSFER
-// id := c.PostForm("user_id")
-// nilai_str := c.PostForm("nilai")
-// log.Println("[CHECK] user id", id, " nilai", nilai_str)
-// nilai, err := strconv.ParseInt(nilai_str, 10, 64)
-// if err != nil {
-// 	log.Println("[ERROR] Handler Transfer ParseInt", err)
-// }
-// REGISTER
-// id := c.PostForm("user_id")
-// nama := c.PostForm("nama")
-// ip := c.PostForm("ip_domisili")

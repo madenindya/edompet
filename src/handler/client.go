@@ -30,6 +30,12 @@ type (
 	}
 )
 
+func RenderQuorum(c *gin.Context) {
+	c.HTML(http.StatusOK, "quorum.tmpl", gin.H{
+		"title": "Quorum Checker",
+	})
+}
+
 func RenderRegister(c *gin.Context) {
 	c.HTML(http.StatusOK, "register.tmpl", gin.H{
 		"title": "Register",
@@ -64,6 +70,50 @@ func RenderTotalSaldo(c *gin.Context) {
 	c.HTML(http.StatusOK, "totalsaldo.tmpl", gin.H{
 		"users": users,
 		"title": "Cek Total Saldo",
+	})
+}
+
+func RenderPing(c *gin.Context) {
+	// get all bank tujuan
+	ips := usaldo.GetAllUser()
+	c.HTML(http.StatusOK, "ping.tmpl", gin.H{
+		"title": "Try Ping",
+		"ips":   ips,
+	})
+}
+
+func HandlePing(c *gin.Context) {
+	ns := c.PostForm("selectbasic")
+
+	ips := usaldo.GetAllUser()
+	var msg string
+
+	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/ping", ns)
+	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer([]byte("")))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Request ping
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		// fail to ping
+		msg = fmt.Sprintf("Error Request -> %v", err)
+
+	} else {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			// fail read body
+			msg = fmt.Sprintf("Error Read body -> %v", err)
+		} else {
+			msg = string(body)
+		}
+	}
+
+	c.HTML(http.StatusOK, "ping.tmpl", gin.H{
+		"title":   "Try Ping",
+		"ips":     ips,
+		"message": msg,
 	})
 }
 
@@ -210,12 +260,23 @@ func HandleTotalSaldo(c *gin.Context) {
 
 	// get all user
 	users := usaldo.GetRegisteredUser()
-	c.HTML(http.StatusOK, "totalsaldo.tmpl", gin.H{
-		"users":       users,
-		"title":       "Cek Total Saldo",
-		"success":     1,
-		"nilai_saldo": sld.Nilai,
-	})
+	if sld.Nilai == -1 {
+		// ERROR -> Quorum !
+		c.HTML(http.StatusOK, "totalsaldo.tmpl", gin.H{
+			"users":   users,
+			"title":   "Cek Total Saldo",
+			"error":   1,
+			"message": "Failed Quorum Check :(",
+		})
+	} else {
+		c.HTML(http.StatusOK, "totalsaldo.tmpl", gin.H{
+			"users":       users,
+			"title":       "Cek Total Saldo",
+			"success":     1,
+			"nilai_saldo": sld.Nilai,
+		})
+	}
+
 }
 
 func RequestTotal(p MyParam, ns string) Saldo {
@@ -255,6 +316,7 @@ func RequestTotal(p MyParam, ns string) Saldo {
 func RequestSaldo(p MyParam, ns string) Saldo {
 	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/getSaldo", ns)
 	// urlstr := "http://localhost:8080/getSaldo"
+	log.Println("[CHECK] RequestSaldo to", urlstr)
 
 	var sld Saldo
 
@@ -270,12 +332,15 @@ func RequestSaldo(p MyParam, ns string) Saldo {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("[ERROR] Handler Client HandleSaldo Request ->", err)
+		sld.Nilai = -1
+		return sld
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("[ERROR] Handler Client HandleSaldo Read resp Body ->", err)
+		log.Println("[CHECK] Isi body", string(body))
 	}
 
 	log.Println("[CHECK] RequestSaldo body ->", string(body))
@@ -324,6 +389,7 @@ func RequestRegister(p MyParam, ns string) Response {
 func RequestTranfer(p MyParam, ns string) StatusTransfer {
 	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/transfer", ns)
 	// urlstr := "http://localhost:8080/transfer"
+	log.Println("[CHECK] Request Transfer to ->", urlstr)
 
 	var st StatusTransfer
 
@@ -339,6 +405,8 @@ func RequestTranfer(p MyParam, ns string) StatusTransfer {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println("[ERROR] Handler Client HandleTransfer Request ->", err)
+		st.Status = -1
+		return st
 	}
 
 	defer resp.Body.Close()
@@ -350,17 +418,30 @@ func RequestTranfer(p MyParam, ns string) StatusTransfer {
 	err = json.Unmarshal(body, &st)
 	if err != nil {
 		log.Println("[ERROR] Handler Client HandleTransfer json Unmarshal ->", err)
+		log.Println("[CHECK] Recieve body", string(body))
 	}
 
 	return st
 }
 
 func QuorumCheck(c *gin.Context) {
+	tpong, sukses := cekQuorum()
+
+	c.HTML(http.StatusOK, "quorum.tmpl", gin.H{
+		"title":  "Quorum Checker",
+		"pong":   tpong,
+		"sukses": sukses,
+	})
+}
+
+func cekQuorum() (int, string) {
 	ips := [8]string{"71", "76", "85", "95", "96", "97", "99", "104"}
 	tpong := int(0)
+	sukses := ""
 	for _, ip := range ips {
 		var pong RPong
 		urlstr := fmt.Sprintf("http://192.168.75.%v/ewallet/ping", ip)
+		log.Println("[CHECK] Ping to ->", urlstr)
 
 		req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer([]byte("")))
 		req.Header.Set("Content-Type", "application/json")
@@ -368,28 +449,28 @@ func QuorumCheck(c *gin.Context) {
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Println("[ERROR] Handler Client HandleTotalSaldo Request ->", err)
+			log.Println("[ERROR] Handler Client QuorumCheck Request ->", err)
+			continue
 		}
 
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Println("[ERROR] Handler Client HandleTotalSaldo Read resp Body ->", err)
+			log.Println("[ERROR] Handler Client QuorumCheck Read resp Body ->", err)
 		}
 
 		err = json.Unmarshal(body, &pong)
 		if err != nil {
-			log.Println("[ERROR] Handler Client HandleSaldo json Unmarshal ->", err)
+			log.Println("[ERROR] Handler Client QuorumCheck json Unmarshal ->", err)
 		}
 
 		if pong.Pong == 1 {
 			tpong = tpong + 1
+			sukses = sukses + "192.168.75." + ip + "; \n"
 		}
 	}
 
-	c.JSON(200, gin.H{
-		"pong": tpong,
-	})
+	return tpong, sukses
 }
 
 func QuorumCheckFront(c *gin.Context) {
@@ -397,7 +478,7 @@ func QuorumCheckFront(c *gin.Context) {
 	tpong := int(0)
 	for _, ns := range nss {
 		var pong RPong
-		urlstr := fmt.Sprintf("http://%v.sisdis.ui.ac.id/ewallet/ping", ns)
+		urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/ping", ns)
 
 		req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer([]byte("")))
 		req.Header.Set("Content-Type", "application/json")
@@ -428,17 +509,3 @@ func QuorumCheckFront(c *gin.Context) {
 		"pong": tpong,
 	})
 }
-
-//
-//
-//
-//
-// OLD
-// Handle Saldo
-// resp, _ := http.Get(urlstr)
-//
-// TRANSFER
-// res, err := http.PostForm(urlstr, url.Values{"user_id": {id}, "nilai": {nilai_str}})
-// 		if err != nil {
-// 			log.Println("[ERROR] Handler HandleTransfer PostForm", err)
-// 		}

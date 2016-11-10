@@ -43,3 +43,18 @@
 //     err := db_main.Select(&ips, query)
 //     return ips, err
 // }
+
+
+//
+//
+//
+//
+// OLD
+// Handle Saldo
+// resp, _ := http.Get(urlstr)
+//
+// TRANSFER
+// res, err := http.PostForm(urlstr, url.Values{"user_id": {id}, "nilai": {nilai_str}})
+//      if err != nil {
+//          log.Println("[ERROR] Handler HandleTransfer PostForm", err)
+//      }
