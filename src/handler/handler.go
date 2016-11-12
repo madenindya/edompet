@@ -16,6 +16,9 @@ const (
 )
 
 func Init() {
+	// init insecure
+	initInsecure()
+
 	// initial database
 	data_src := fmt.Sprintf("user=%v password='%v' dbname=%v sslmode=disable", USER, PASS, DBNAME)
 	db, err := sqlx.Connect("postgres", data_src)

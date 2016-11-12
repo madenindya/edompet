@@ -44,18 +44,47 @@ func GetTotalSaldo(c *gin.Context) {
 	if tpong == 8 {
 		var p MyParam
 		c.BindJSON(&p)
+		log.Println("[CHECK] user_id", p.Id)
 
 		sld := int64(0)
 
-		// request to all
-		ns := usaldo.NsKelompok
-		for _, n := range ns {
-			tmp := RequestSaldo(p, n)
-			if tmp.Nilai != -1 {
-				sld = sld + tmp.Nilai
-			}
-		}
+		is_here, ip := usaldo.IsHere(p.Id)
 
+		if is_here == 1 {
+			// user berdomisili di kantor cabang
+			// request to all
+			ns := usaldo.NsKelompok
+			for _, n := range ns {
+				tmp := RequestSaldo(p, n)
+				if tmp.Nilai != -1 {
+					sld = sld + tmp.Nilai
+				}
+			}
+		} else if is_here == 0 {
+			// user tidak berdomisli di kantor cabang ini
+			// request getTotalSaldo to kantor cabang domisili
+			var ns string
+			switch {
+			case ip == "152.118.33.76":
+				ns = "raditya"
+			case ip == "152.118.33.85":
+				ns = "wicaksono"
+			case ip == "152.118.33.95":
+				ns = "joseph"
+			case ip == "152.118.33.96":
+				ns = "saga"
+			case ip == "152.118.33.97":
+				ns = "halim"
+			case ip == "152.118.33.99":
+				ns = "wijaya"
+			case ip == "152.118.33.104":
+				ns = "gylberth"
+			}
+			return_saldo = RequestTotal(p, ns)
+		} else {
+			// user tidak ditemukan
+			return_saldo.Nilai = -1
+		}
 		return_saldo.Nilai = sld
 	} else {
 		return_saldo.Nilai = -1

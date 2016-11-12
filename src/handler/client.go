@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -30,6 +31,24 @@ type (
 	}
 )
 
+var master_client *http.Client
+
+func initInsecure() {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	// client := &http.Client{Transport: tr}
+	master_client = &http.Client{Transport: tr}
+}
+
+//
+//
+//
+//
+// VIEW
+// VIEW
+//
 func RenderQuorum(c *gin.Context) {
 	c.HTML(http.StatusOK, "quorum.tmpl", gin.H{
 		"title": "Quorum Checker",
@@ -82,40 +101,13 @@ func RenderPing(c *gin.Context) {
 	})
 }
 
-func HandlePing(c *gin.Context) {
-	ns := c.PostForm("selectbasic")
-
-	ips := usaldo.GetAllUser()
-	var msg string
-
-	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/ping", ns)
-	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer([]byte("")))
-	req.Header.Set("Content-Type", "application/json")
-
-	// Request ping
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		// fail to ping
-		msg = fmt.Sprintf("Error Request -> %v", err)
-
-	} else {
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			// fail read body
-			msg = fmt.Sprintf("Error Read body -> %v", err)
-		} else {
-			msg = string(body)
-		}
-	}
-
-	c.HTML(http.StatusOK, "ping.tmpl", gin.H{
-		"title":   "Try Ping",
-		"ips":     ips,
-		"message": msg,
-	})
-}
+//
+//
+//
+//
+// HANDLER
+// HANDLER
+//
 
 func HandleTransfer(c *gin.Context) {
 	// get param from form input
@@ -280,21 +272,9 @@ func HandleTotalSaldo(c *gin.Context) {
 }
 
 func RequestTotal(p MyParam, ns string) Saldo {
-	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/getTotalSaldo", ns)
-	// urlstr := "http://localhost:8080/getTotalSaldo"
-
 	var sld Saldo
 
-	pb, err := json.Marshal(p)
-	if err != nil {
-		log.Println("[ERROR] Handler Client HandleTotalSaldo json Marshal ->", err)
-	}
-
-	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := sendRequest(ns, "getTotalSaldo", p)
 	if err != nil {
 		log.Println("[ERROR] Handler Client HandleTotalSaldo Request ->", err)
 	}
@@ -307,29 +287,53 @@ func RequestTotal(p MyParam, ns string) Saldo {
 
 	err = json.Unmarshal(body, &sld)
 	if err != nil {
+		log.Println("[CHECK] Error body ->", string(body))
 		log.Println("[ERROR] Handler Client HandleTotalSaldo json Unmarshal ->", err)
 	}
 
 	return sld
 }
 
-func RequestSaldo(p MyParam, ns string) Saldo {
-	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/getSaldo", ns)
-	// urlstr := "http://localhost:8080/getSaldo"
-	log.Println("[CHECK] RequestSaldo to", urlstr)
+func HandlePing(c *gin.Context) {
+	ns := c.PostForm("selectbasic")
 
-	var sld Saldo
+	ips := usaldo.GetAllUser()
+	var msg string
 
-	pb, err := json.Marshal(p)
-	if err != nil {
-		log.Println("[ERROR] Handler Client HandleSaldo json Marshal ->", err)
-	}
-
-	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
+	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/ping", ns)
+	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer([]byte("")))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	// Request ping
+	// client := &http.Client{}
+	client := master_client
 	resp, err := client.Do(req)
+	if err != nil {
+		// fail to ping
+		msg = fmt.Sprintf("Error Request -> %v", err)
+
+	} else {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			// fail read body
+			msg = fmt.Sprintf("Error Read body -> %v", err)
+		} else {
+			msg = string(body)
+		}
+	}
+
+	c.HTML(http.StatusOK, "ping.tmpl", gin.H{
+		"title":   "Try Ping",
+		"ips":     ips,
+		"message": msg,
+	})
+}
+
+func RequestSaldo(p MyParam, ns string) Saldo {
+	var sld Saldo
+
+	resp, err := sendRequest(ns, "getSaldo", p)
 	if err != nil {
 		log.Println("[ERROR] Handler Client HandleSaldo Request ->", err)
 		sld.Nilai = -1
@@ -353,21 +357,9 @@ func RequestSaldo(p MyParam, ns string) Saldo {
 }
 
 func RequestRegister(p MyParam, ns string) Response {
-	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/register", ns)
-	// urlstr := "http://localhost:8080/register"
-
 	var rs Response
 
-	pb, err := json.Marshal(p)
-	if err != nil {
-		log.Println("[ERROR] Handler Client HandleRegister json Marshal ->", err)
-	}
-
-	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := sendRequest(ns, "register", p)
 	if err != nil {
 		log.Println("[ERROR] Handler Client HandleRegister Request ->", err)
 	}
@@ -387,27 +379,9 @@ func RequestRegister(p MyParam, ns string) Response {
 }
 
 func RequestTranfer(p MyParam, ns string) StatusTransfer {
-	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/transfer", ns)
-	// urlstr := "http://localhost:8080/transfer"
-	log.Println("[CHECK] Request Transfer to ->", urlstr)
-
 	var st StatusTransfer
 
-	pb, err := json.Marshal(p)
-	if err != nil {
-		log.Println("[ERROR] Handler Client HandleRegister json Marshal ->", err)
-	}
-
-	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println("[ERROR] Handler Client HandleTransfer Request ->", err)
-		st.Status = -1
-		return st
-	}
+	resp, err := sendRequest(ns, "transfer", p)
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -424,6 +398,32 @@ func RequestTranfer(p MyParam, ns string) StatusTransfer {
 	return st
 }
 
+func sendRequest(ns, action string, p MyParam) (*http.Response, error) {
+	urlstr := fmt.Sprintf("https://%v.sisdis.ui.ac.id/ewallet/%v", ns, action)
+	log.Println("[CHECK] Request", action, " to ->", ns)
+
+	pb, err := json.Marshal(p)
+	if err != nil {
+		log.Println("[ERROR] Handler Client Request", action, " json Marshal ->", err)
+	}
+
+	req, err := http.NewRequest("POST", urlstr, bytes.NewBuffer(pb))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := master_client
+	// client := &http.Client{}
+	resp, err := client.Do(req)
+
+	return resp, err
+}
+
+//
+//
+//
+//
+// QUORUM
+// QUORUM
+//
 func QuorumCheck(c *gin.Context) {
 	tpong, sukses := cekQuorum()
 

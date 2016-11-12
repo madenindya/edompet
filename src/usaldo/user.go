@@ -26,6 +26,23 @@ func IsExist(id string) bool {
 	return true
 }
 
+func IsHere(id string) (int, string) {
+	query := `
+	select ip_domisili
+	from usaldo
+	where user_id = $1`
+	var ip string
+	row := db_main.QueryRowx(query, id)
+	err := row.Scan(&ip)
+	if err != nil {
+		return -1, ""
+	}
+	if ip == "152.118.33.71" {
+		return 1, ip
+	}
+	return 0, ip
+}
+
 func GetRegisteredUser() []Usaldo {
 	regusers := make([]Usaldo, 0)
 	var tmpusaldo Usaldo
@@ -72,8 +89,8 @@ func insertNew(id, nama, ip string) error {
 	query := `
         insert into usaldo
         values ($1, $2, $3, 0)`
-	if id == "1306381622" {
-		// Jika pemilik bank
+	if ip == "152.118.33.71" {
+		// Akun berdomisili di kantor cabang pribadi
 		query = `
         insert into usaldo
         values ($1, $2, $3, 1000000)`
